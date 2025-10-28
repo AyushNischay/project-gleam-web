@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,39 +7,55 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { api, setAuthToken } from "@/lib/api"; // Import API
 
 const Login = () => {
-  const [studentId, setStudentId] = useState("");
-  const [teacherId, setTeacherId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleStudentLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (studentId && password) {
-      // Mock login - store student ID in localStorage
-      localStorage.setItem("userRole", "student");
-      localStorage.setItem("userId", studentId);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back, student!",
-      });
-      navigate("/student-dashboard");
-    }
-  };
+    setIsLoading(true);
+    setError(null);
 
-  const handleTeacherLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (teacherId && password) {
-      // Mock login - store teacher role
-      localStorage.setItem("userRole", "teacher");
-      localStorage.setItem("userId", teacherId);
+    try {
+      const { data } = await api.post('/api/auth/login', { email, password });
+      // Expecting { token, email, role, userId }
+      setAuthToken(data.token);
+      if (data?.role) {
+        localStorage.setItem('userRole', String(data.role).toLowerCase());
+      }
+      if (data?.userId) {
+        localStorage.setItem('userId', String(data.userId));
+      }
+
       toast({
         title: "Login Successful",
-        description: "Welcome back, teacher!",
+        description: data?.role ? `Welcome back, ${String(data.role).toLowerCase()}!` : "Welcome back!",
       });
-      navigate("/teacher-dashboard");
+
+      // Navigate based on role
+      if (data.role === 'STUDENT') {
+        navigate("/student-dashboard");
+      } else if (data.role === 'TEACHER') {
+        navigate("/teacher-dashboard");
+      } else {
+        // Fallback: go to dashboard if role missing/other
+        navigate("/");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data || 'Login failed');
+      toast({
+        title: "Login Failed",
+        description: err.message || "Invalid credentials",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,79 +78,46 @@ const Login = () => {
           <CardHeader>
             <CardTitle>Login</CardTitle>
             <CardDescription>
-              Choose your role to access the system
+              Enter your credentials to access the system
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="student" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="student">Student</TabsTrigger>
-                <TabsTrigger value="teacher">Teacher</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="student">
-                <form onSubmit={handleStudentLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="student-id">Student ID</Label>
-                    <Input
-                      id="student-id"
-                      placeholder="Enter your student ID"
-                      value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="student-password">Password</Label>
-                    <Input
-                      id="student-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90">
-                    Login as Student
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="teacher">
-                <form onSubmit={handleTeacherLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="teacher-id">Teacher ID</Label>
-                    <Input
-                      id="teacher-id"
-                      placeholder="Enter your teacher ID"
-                      value={teacherId}
-                      onChange={(e) => setTeacherId(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="teacher-password">Password</Label>
-                    <Input
-                      id="teacher-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90">
-                    Login as Teacher
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              {error && <div className="text-red-500 text-sm">{error}</div>}
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-primary hover:opacity-90"
+                disabled={isLoading}
+              >
+                {isLoading ? "Logging in..." : "Login"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 };
-
 export default Login;

@@ -107,10 +107,20 @@ const TeacherDashboard = () => {
               <p className="text-xs text-muted-foreground">Teacher Portal</p>
             </div>
           </div>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-            <LogOut className="w-4 h-4 mr-2" />
+      <div className="flex items-center gap-2">
+          <Button onClick={() => navigate('/management')}
+          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90"
+          size="sm"
+          >
+            Manage Students
+        </Button>
+
+        <Button onClick={handleLogout} variant="outline" size="sm">
+          <LogOut className="w-4 h-4 mr-2" />
             Logout
-          </Button>
+        </Button>
+      </div>
+ 
         </div>
       </nav>
 
